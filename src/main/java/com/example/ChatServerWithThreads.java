@@ -1,8 +1,10 @@
+//David Saiontz 3/24/38 client for basic chat server
 package com.example;
 
 import java.net.*;
 import java.io.*;
 import java.util.Date;
+import java.util.ArrayList;
 
 /**
  * This program is a server that takes connection requests on
@@ -18,11 +20,12 @@ import java.util.Date;
 public class ChatServerWithThreads {
 
     public static final int LISTENING_PORT = 9876;
-
-    public static void main(String[] args) {
+    static ArrayList<ConnectionHandler> connections = new ArrayList<ConnectionHandler>();
+    public static void main(String[] args) throws IOException{
 
         ServerSocket listener;  // Listens for incoming connections.
         Socket connection;      // For communication with the connecting program.
+        
 
         /* Accept and process connections forever, or until some error occurs. */
 
@@ -30,7 +33,10 @@ public class ChatServerWithThreads {
             listener = new ServerSocket(LISTENING_PORT);
             System.out.println("Listening on port " + LISTENING_PORT);
             while (true) {
-                  // Accept next connection request and handle it.
+                connection = listener.accept();
+                ConnectionHandler handler = new ConnectionHandler(connection);
+                handler.start();
+                connections.add(handler);
             }
         }
         catch (Exception e) {
@@ -48,20 +54,40 @@ public class ChatServerWithThreads {
      */
     private static class ConnectionHandler extends Thread {
         Socket client;
-        ConnectionHandler(Socket socket) {
+        ObjectInputStream ois;
+        ObjectOutputStream oos;
+        ConnectionHandler(Socket socket) throws IOException {
             client = socket;
+            ois = new ObjectInputStream(client.getInputStream());
+            oos = new ObjectOutputStream(client.getOutputStream());
         }
         public void run() {
             String clientAddress = client.getInetAddress().toString();
             while(true) {
 	            try {
-	            	//your code to send messages goes here.
-	            }
-	            catch (Exception e){
+                    String message = (String)ois.readObject();
+                    System.out.println("Recieved: " + message);
+                    if (message.equals("disconnect")){
+                        System.out.println("Client disconnected");
+                        connections.remove(connections.indexOf(this));
+                        break;
+                    }
+                    for (ConnectionHandler connection : connections){
+                        connection.oos.writeObject(message);
+                        connection.oos.flush();
+                    } 
+	            } 
+                catch (EOFException e){
+                    System.out.println("Client disconnected");
+                    connections.remove(connections.indexOf(this));
+                    break;
+                }catch (Exception e){
 	                System.out.println("Error on connection with: " 
 	                        + clientAddress + ": " + e);
+                    
 	            }
             }
+            
         }
     }
 
