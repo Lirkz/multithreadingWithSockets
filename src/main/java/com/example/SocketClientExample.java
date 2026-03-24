@@ -43,6 +43,7 @@ public class SocketClientExample{
         public void actionPerformed(ActionEvent e) {
             try {
                 oos.writeObject(input.getText());
+				oos.flush();
                 input.setText("");
             } catch (IOException e1) {
                 e1.printStackTrace();
